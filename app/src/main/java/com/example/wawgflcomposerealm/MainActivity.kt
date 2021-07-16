@@ -75,11 +75,11 @@ class MainActivity : ComponentActivity() {
                     TextAndButton(nav)
                 }
                 composable(
-                    "choiceHistoryList/{index}",
-                    arguments = listOf(navArgument("index") { type = NavType.IntType })
+                    "choiceHistoryList/{placeId}",
+                    arguments = listOf(navArgument("placeId") { type = NavType.StringType })
                 )
                 {
-                    HistoryList(nav, currentChoiceId)
+                    HistoryList(nav,it.arguments?.getString("placeId") )
                 }
                 composable("allHistoryList")
                 {
@@ -252,7 +252,8 @@ fun TextAndButton(nav: NavController) {
         }
         Button(
             onClick = {
-                nav.navigate("choiceHistoryList/${state.firstVisibleItemIndex}")
+                val item = list[state.firstVisibleItemIndex + 2]
+                nav.navigate("choiceHistoryList/${item.placeId}")
                 {}
             },
             modifier = Modifier
