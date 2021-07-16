@@ -20,7 +20,7 @@ class PlacesAPI {
         @SuppressLint("MissingPermission")
         fun getPlaces(
             context: Context,
-            maxNumber: Int = 100,
+            maxNumber: Int = 50,
             keyword: String = ""
         ): List<LocalChoice> {
             val resultList = mutableListOf<LocalChoice>()
@@ -40,6 +40,8 @@ class PlacesAPI {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
 
+                    val maxAllowed = 60 - ChoicesDao().getAll().size
+                    // Google won't return more than 60 for free
                     runBlocking {
                         val job: Job = launch {
                             fetchPlaces(
@@ -48,7 +50,7 @@ class PlacesAPI {
                                 resultList,
                                 currentLat,
                                 currentLng,
-                                maxNumber,
+                                maxAllowed,
                                 ""
                             )
                         }
@@ -90,11 +92,11 @@ class PlacesAPI {
             val response = apiCall.execute()
             if (response.isSuccessful) {
                 val thisResponse = response.body()
+
                 if(thisResponse!!.next_page_token != null)
                 {
                     newNextPage = thisResponse!!.next_page_token
-                }
-                Log.i("nextpage", newNextPage ?: "NULL")
+                    Log.i("nextpage", newNextPage ?: "NULL")
                     resultList.addAll(
                         LocalChoice.convertResults(
                             context,
@@ -103,7 +105,8 @@ class PlacesAPI {
                             currentLat
                         )
                     )
-                if(resultList.size < maxNumber && newNextPage != null)
+                }
+                if(resultList.size < maxNumber && thisResponse!!.next_page_token != null)
                 {
                     fetchPlaces(context,
                         service,
