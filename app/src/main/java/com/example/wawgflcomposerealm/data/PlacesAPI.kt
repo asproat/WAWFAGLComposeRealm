@@ -35,7 +35,15 @@ class PlacesAPI {
             val lm = context.getSystemService(Context.LOCATION_SERVICE)
                     as LocationManager
             if (lm != null) {
-                val location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                var location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                if(location == null)
+                {
+                    location = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                    if(location == null)
+                    {
+                        location = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
+                    }
+                }
                 if (location != null) {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
@@ -88,6 +96,8 @@ class PlacesAPI {
 
         withContext(Dispatchers.IO)
         {
+            // let's wait a half second to see if that helps with the null next pages
+            Thread.sleep(1500)
             var newNextPage = nextPage
             val response = apiCall.execute()
             if (response.isSuccessful) {
