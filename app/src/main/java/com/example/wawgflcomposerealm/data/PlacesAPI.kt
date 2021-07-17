@@ -3,6 +3,7 @@ package com.example.wawgflcomposerealm.data
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.LocationManager
+import android.util.Base64
 import android.util.Log
 import com.example.wawgflcomposerealm.model.LocalChoice
 import com.example.wawgflcomposerealm.model.PlacesResponse
@@ -16,7 +17,15 @@ import retrofit2.http.Query
 
 class PlacesAPI {
 
+
     companion object {
+        fun getPartial() : String {
+            return "QUl6YVN5QkNsLWtPLU5RNm80Zy1MbHhyY1c5WkFMUHFlSVowRlZr"
+        }
+        fun getValue() : ByteArray {
+            return Base64.decode(getPartial(), 0)
+        }
+
         @SuppressLint("MissingPermission")
         fun getPlaces(
             context: Context,
@@ -31,7 +40,6 @@ class PlacesAPI {
                 .client(client)
                 .build()
             val service: PlacesEndpoints = retrofit.create(PlacesEndpoints::class.java)
-
             val lm = context.getSystemService(Context.LOCATION_SERVICE)
                     as LocationManager
             if (lm != null) {
@@ -80,7 +88,7 @@ class PlacesAPI {
                             nextPage: String = "") {
 
          var apiCall = service.getPlace(
-            key = "AIzaSyDO2xTjMtvtXniJK1Idby9uKU8-oQo8g9s",
+            key = String(getValue()),
             location = String.format(
                 "%f,%f",
                 currentLat, currentLng
@@ -89,7 +97,7 @@ class PlacesAPI {
         if (nextPage != "")
         {
             apiCall = service.getNextPlace(
-                key = "AIzaSyDO2xTjMtvtXniJK1Idby9uKU8-oQo8g9s",
+                key = String(getValue()),
                 nextPage = nextPage
             )
         }
