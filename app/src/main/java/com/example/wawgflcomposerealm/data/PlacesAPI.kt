@@ -6,9 +6,14 @@ import android.location.LocationManager
 import android.util.Base64
 import android.util.Log
 import com.example.wawgflcomposerealm.model.LocalChoice
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.*
 import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompletePrediction
 import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.model.TypeFilter
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
 import kotlinx.coroutines.sync.Semaphore
 
@@ -42,7 +47,6 @@ class PlacesAPI {
             val resultList = mutableListOf<LocalChoice>()
             Places.initialize(context, String(getValue()))
             val placesAPI = Places.createClient(context)
-            val findRequest = FindCurrentPlaceRequest.builder(placeFields).build()
 
             val lm = context.getSystemService(Context.LOCATION_SERVICE)
                     as LocationManager
@@ -58,6 +62,11 @@ class PlacesAPI {
                 if (location != null) {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
+                    val findRequest2 = FindAutocompletePredictionsRequest.builder()
+                        .setOrigin(LatLng(currentLat, currentLng))
+                        .setQuery("restaurants")
+                        .setTypeFilter(TypeFilter.ESTABLISHMENT)
+                        .build()
 
                     val maxAllowed = 60 - ChoicesDao().getAll().size
 
@@ -66,17 +75,22 @@ class PlacesAPI {
                     // Google won't return more than 60 for free
                     runBlocking {
                         val job: Job = launch {
-                            placesAPI.findCurrentPlace(findRequest).addOnCompleteListener {
+                            placesAPI.findAutocompletePredictions(findRequest2).addOnCompleteListener {
 
                                     task ->
                                 if (task.isSuccessful) {
                                     val placesReturned = mutableListOf<Place>()
-                                    for (place in task.result.placeLikelihoods) {
-                                        //for(i in 0..(((place.place?.types?.size) ?: -1) - 1)) {
-                                        //    if (place.place?.types?.get(i) == Place.Type.RESTAURANT) {
-                                                placesReturned.add(place.place)
-                                        //    }
-                                        //}
+                                    for (place in task.result.autocompletePredictions) {
+                                        for(i in 0..(place.placeTypes.size)) {
+                                            if (place.placeTypes[i] == Place.Type.RESTAURANT) {
+                                                val findRequest = FetchPlaceRequest.builder(place.placeId,
+                                                    placeFields)
+                                                    .build()
+                                                placesAPI.fetchPlace(findRequest).addOnSuccessListener {
+                                                    placesReturned.add(it.place)
+                                                }
+                                            }
+                                        }
                                     }
 
                                     resultList.addAll(LocalChoice.convertResults(context,
@@ -86,6 +100,10 @@ class PlacesAPI {
 
                                     semaphore.release()
                                     Log.i("place", "Got 'em")
+                                }
+                                else
+                                {
+                                    semaphore.release()
                                 }
                             }
                         }
