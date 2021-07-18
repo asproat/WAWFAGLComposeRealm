@@ -6,23 +6,22 @@ import android.location.LocationManager
 import android.util.Base64
 import android.util.Log
 import com.example.wawgflcomposerealm.model.LocalChoice
-import com.example.wawgflcomposerealm.model.PlacesResponse
 import kotlinx.coroutines.*
-import okhttp3.OkHttpClient
-import retrofit2.Call
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Query
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
+import kotlinx.coroutines.sync.Semaphore
+
 
 class PlacesAPI {
 
 
     companion object {
-        fun getPartial() : String {
+        fun getPartial(): String {
             return "QUl6YVN5QkNsLWtPLU5RNm80Zy1MbHhyY1c5WkFMUHFlSVowRlZr"
         }
-        fun getValue() : ByteArray {
+
+        fun getValue(): ByteArray {
             return Base64.decode(getPartial(), 0)
         }
 
@@ -32,23 +31,27 @@ class PlacesAPI {
             maxNumber: Int = 50,
             keyword: String = ""
         ): List<LocalChoice> {
+            val placeFields = listOf(
+                Place.Field.ID,
+                Place.Field.NAME,
+                Place.Field.ADDRESS,
+                Place.Field.LAT_LNG,
+                Place.Field.TYPES,
+                Place.Field.PHOTO_METADATAS
+            )
             val resultList = mutableListOf<LocalChoice>()
-            val client = OkHttpClient.Builder().build()
-            val retrofit = Retrofit.Builder()
-                .baseUrl("https://maps.googleapis.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
-            val service: PlacesEndpoints = retrofit.create(PlacesEndpoints::class.java)
+            Places.initialize(context, String(getValue()))
+            val placesAPI = Places.createClient(context)
+            val findRequest = FindCurrentPlaceRequest.builder(placeFields).build()
+
             val lm = context.getSystemService(Context.LOCATION_SERVICE)
                     as LocationManager
             if (lm != null) {
+
                 var location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                if(location == null)
-                {
+                if (location == null) {
                     location = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                    if(location == null)
-                    {
+                    if (location == null) {
                         location = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
                     }
                 }
@@ -57,28 +60,49 @@ class PlacesAPI {
                     val currentLat = location!!.latitude
 
                     val maxAllowed = 60 - ChoicesDao().getAll().size
+
+                    val semaphore = Semaphore(1)
+
                     // Google won't return more than 60 for free
                     runBlocking {
                         val job: Job = launch {
-                            fetchPlaces(
-                                context,
-                                service,
-                                resultList,
-                                currentLat,
-                                currentLng,
-                                maxAllowed,
-                                ""
-                            )
+                            placesAPI.findCurrentPlace(findRequest).addOnCompleteListener {
+
+                                    task ->
+                                if (task.isSuccessful) {
+                                    val placesReturned = mutableListOf<Place>()
+                                    for (place in task.result.placeLikelihoods) {
+                                        //for(i in 0..(((place.place?.types?.size) ?: -1) - 1)) {
+                                        //    if (place.place?.types?.get(i) == Place.Type.RESTAURANT) {
+                                                placesReturned.add(place.place)
+                                        //    }
+                                        //}
+                                    }
+
+                                    resultList.addAll(LocalChoice.convertResults(context,
+                                                                placesReturned,
+                                                                currentLng,
+                                                                currentLat))
+
+                                    semaphore.release()
+                                    Log.i("place", "Got 'em")
+                                }
+                            }
                         }
                         job.join()
-                        Log.i("place", "Got 'em")
+                        semaphore.acquire() // grab the first one
+                        Log.i("place", "Get 'em")
+                        semaphore.acquire()
+                        Log.i("place", "Really Got 'em")
                     }
                 }
             }
 
-        return resultList
+            return resultList
+        }
     }
-
+}
+        /*
     suspend private fun fetchPlaces(context: Context,
                             service: PlacesEndpoints,
                             resultList : MutableList<LocalChoice>,
@@ -158,3 +182,4 @@ class PlacesAPI {
 
     }
 }
+         */

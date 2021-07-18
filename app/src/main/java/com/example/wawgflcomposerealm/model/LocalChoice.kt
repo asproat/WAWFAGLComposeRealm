@@ -1,22 +1,22 @@
 package com.example.wawgflcomposerealm.model
 
-import android.app.Application
 import android.content.Context
-import android.content.SharedPreferences
 import android.location.Location
 import com.example.wawgflcomposerealm.data.ChoicesDao
+import com.google.android.libraries.places.api.model.PhotoMetadata
+import com.google.android.libraries.places.api.model.Place
 
 public class LocalChoice {
     lateinit var choiceName: String
     lateinit var choiceAddress: String
     lateinit var placeId: String
              var choiceDistance: Float = 0.0F
-    lateinit var photoReference: String
+             var photoMetadata: String? = null
 
     companion object
     {
         fun convertResults(context: Context,
-                           results: List<Results>,
+                           results: List<Place>,
                            lng: Double, lat: Double) : List<LocalChoice>
         {
             val resultList = mutableListOf<LocalChoice>()
@@ -29,10 +29,10 @@ public class LocalChoice {
             for (result in results) {
 
                 // if it's not already in the list
-                if(choiceData.getById(result.place_id) == null) {
+                if(choiceData.getById(result.id ?: "") == null) {
                     val choiceLocation = Location("choice")
-                    choiceLocation.latitude = result.geometry.location.lat
-                    choiceLocation.longitude = result.geometry.location.lng
+                    choiceLocation.latitude = result.latLng?.latitude ?: 0.0
+                    choiceLocation.longitude = result.latLng?.longitude ?: 0.0
 
                     val distance = currentLocation.distanceTo(choiceLocation)
                     if (distance <=
@@ -41,14 +41,12 @@ public class LocalChoice {
                             .getFloat("MaxDistance", 3000.0F)
                     ) {
                         var localChoice = LocalChoice()
-                        localChoice.choiceName = result.name
-                        localChoice.choiceAddress = result.vicinity
+                        localChoice.choiceName = result.name ?: ""
+                        localChoice.choiceAddress = result.address ?: ""
                         localChoice.choiceDistance = distance
-                        localChoice.placeId = result.place_id
-                        if (result.photos != null && result.photos.size > 0) {
-                            localChoice.photoReference = result.photos[0].photo_reference
-                        } else {
-                            localChoice.photoReference = ""
+                        localChoice.placeId = result.id!!
+                        if (result.photoMetadatas != null && result.photoMetadatas!!.size > 0) {
+                            localChoice.photoMetadata = result.photoMetadatas!![0].zza()
                         }
 
                         resultList.add(localChoice)

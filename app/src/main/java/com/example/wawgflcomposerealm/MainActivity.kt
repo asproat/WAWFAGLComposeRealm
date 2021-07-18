@@ -61,6 +61,11 @@ class MainActivity : ComponentActivity() {
             ) {}.launch(
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
+            registerForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                    ) {}.launch(
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
         }
 
         // set up Realm
