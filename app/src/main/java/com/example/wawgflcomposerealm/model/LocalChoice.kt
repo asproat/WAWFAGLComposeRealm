@@ -10,8 +10,8 @@ public class LocalChoice {
     lateinit var choiceName: String
     lateinit var choiceAddress: String
     lateinit var placeId: String
-             var choiceDistance: Float = 0.0F
-             var photoMetadata: String? = null
+    var choiceDistance: Float = 0.0F
+    var photoMetadata: String? = null
 
     companion object
     {
@@ -55,26 +55,6 @@ public class LocalChoice {
             }
 
             return resultList
-        }
-
-        fun convertResult(context: Context,
-                           placeId: String,
-                            placeName: String,
-                            placeAddress: String,
-                            placeDistance: Double,) : LocalChoice?
-        {
-            val choiceData = ChoicesDao()
-            var localChoice : LocalChoice? = null
-                if(choiceData.getById(placeId ?: "") == null) {
-4
-                        localChoice = LocalChoice()
-                        localChoice.choiceName = placeName ?: ""
-                        localChoice.choiceAddress = placeAddress ?: ""
-                        localChoice.choiceDistance = placeDistance.toFloat()
-                        localChoice.placeId = placeId
-
-                    }
-            return localChoice
         }
     }
 }
