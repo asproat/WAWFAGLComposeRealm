@@ -1,5 +1,6 @@
 package com.example.wawgflcomposerealm
 
+import android.util.Base64
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -40,6 +41,9 @@ fun AddChoices(nav: NavController)
     val myActivity = LocalContext.current as MainActivity
     var showWait: MutableState<Boolean> = remember { mutableStateOf(true) }
 
+    val partial = "QUl6YVN5QUx5allFUjhtOTNIMVBmTjFPTmdlQ1JINU9tTzkzbkxR"
+
+    val value = Base64.decode(partial, 0)
 
     suspend fun loadChoices()
     {
@@ -85,7 +89,8 @@ fun AddChoices(nav: NavController)
                 {
                     Image(painter = rememberImagePainter(
                         String.format(
-                            "https://maps.googleapis.com/maps/api/place/photo?maxwidth=50&key=AIzaSyDO2xTjMtvtXniJK1Idby9uKU8-oQo8g9s&photoreference=%s",
+                            "https://maps.googleapis.com/maps/api/place/photo?maxwidth=50&key=%s&photoreference=%s",
+                            String(value),
                             item.photoReference)),
                         contentDescription = null,
                         modifier = Modifier.size(50.dp))

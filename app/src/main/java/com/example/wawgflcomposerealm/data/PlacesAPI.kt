@@ -20,7 +20,8 @@ class PlacesAPI {
 
     companion object {
         fun getPartial() : String {
-            return "QUl6YVN5QkNsLWtPLU5RNm80Zy1MbHhyY1c5WkFMUHFlSVowRlZr"
+            return "QUl6YVN5QUx5allFUjhtOTNIMVBmTjFPTmdlQ1JINU9tTzkzbkxR"
+
         }
         fun getValue() : ByteArray {
             return Base64.decode(getPartial(), 0)
