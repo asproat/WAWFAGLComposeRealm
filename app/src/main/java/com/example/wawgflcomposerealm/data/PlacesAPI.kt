@@ -3,15 +3,14 @@ package com.example.wawgflcomposerealm.data
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.LocationManager
+import android.text.style.CharacterStyle
 import android.util.Base64
 import android.util.Log
 import com.example.wawgflcomposerealm.model.LocalChoice
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.*
 import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.model.AutocompletePrediction
-import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.TypeFilter
+import com.google.android.libraries.places.api.model.*
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
@@ -62,56 +61,64 @@ class PlacesAPI {
                 if (location != null) {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
+                    val boundary = RectangularBounds.newInstance(
+                        LatLng(currentLat - 0.05, currentLng + 0.05),
+                        LatLng(currentLat + 0.05, currentLng - 0.05)
+                    )
+                    for (thisQuery in "0123456789abcdefghijklmnopqrstuvwxyz".toCharArray())
+                    {
                     val findRequest2 = FindAutocompletePredictionsRequest.builder()
                         .setOrigin(LatLng(currentLat, currentLng))
-                        .setQuery("restaurants")
+                        //.setLocationBias(boundary)
+                        .setCountries("US")
+                        .setLocationRestriction(boundary)
+                        .setQuery(thisQuery.toString())
                         .setTypeFilter(TypeFilter.ESTABLISHMENT)
                         .build()
 
                     val maxAllowed = 60 - ChoicesDao().getAll().size
 
                     val semaphore = Semaphore(1)
+                    val placeSemaphore = Semaphore(1)
 
                     // Google won't return more than 60 for free
                     runBlocking {
-                        val job: Job = launch {
-                            placesAPI.findAutocompletePredictions(findRequest2).addOnCompleteListener {
+                        placesAPI.findAutocompletePredictions(findRequest2).addOnCompleteListener {
 
-                                    task ->
-                                if (task.isSuccessful) {
-                                    val placesReturned = mutableListOf<Place>()
-                                    for (place in task.result.autocompletePredictions) {
-                                        for(i in 0..(place.placeTypes.size)) {
-                                            if (place.placeTypes[i] == Place.Type.RESTAURANT) {
-                                                val findRequest = FetchPlaceRequest.builder(place.placeId,
-                                                    placeFields)
-                                                    .build()
-                                                placesAPI.fetchPlace(findRequest).addOnSuccessListener {
-                                                    placesReturned.add(it.place)
-                                                }
+                                task ->
+                            if (task.isSuccessful) {
+                                val placesReturned = mutableListOf<Place>()
+                                for (place in task.result.autocompletePredictions) {
+                                    for (i in 0..(place.placeTypes.size - 1)) {
+                                        if (place.placeTypes[i] == Place.Type.RESTAURANT) {
+                                            val newLocalChoice = LocalChoice.convertResult(
+                                                context = context,
+                                                placeId = place.placeId,
+                                                placeName = place.getPrimaryText(null).toString(),
+                                                placeAddress = place.getSecondaryText(null)
+                                                    .toString(),
+                                                placeDistance = (place.distanceMeters ?: 0).toDouble()
+                                            )
+                                            if (newLocalChoice != null) {
+                                                resultList.add(newLocalChoice)
                                             }
+                                            break
                                         }
                                     }
 
-                                    resultList.addAll(LocalChoice.convertResults(context,
-                                                                placesReturned,
-                                                                currentLng,
-                                                                currentLat))
-
-                                    semaphore.release()
-                                    Log.i("place", "Got 'em")
-                                }
-                                else
-                                {
-                                    semaphore.release()
                                 }
                             }
+
+
+                            semaphore.release()
+                            Log.i("place", "Got 'em")
                         }
-                        job.join()
+
                         semaphore.acquire() // grab the first one
                         Log.i("place", "Get 'em")
                         semaphore.acquire()
                         Log.i("place", "Really Got 'em")
+                    }
                     }
                 }
             }
@@ -120,84 +127,84 @@ class PlacesAPI {
         }
     }
 }
-        /*
-    suspend private fun fetchPlaces(context: Context,
-                            service: PlacesEndpoints,
-                            resultList : MutableList<LocalChoice>,
-                            currentLat: Double,
-                            currentLng: Double,
-                            maxNumber: Int,
-                            nextPage: String = "") {
+/*
+suspend private fun fetchPlaces(context: Context,
+                    service: PlacesEndpoints,
+                    resultList : MutableList<LocalChoice>,
+                    currentLat: Double,
+                    currentLng: Double,
+                    maxNumber: Int,
+                    nextPage: String = "") {
 
-         var apiCall = service.getPlace(
-            key = String(getValue()),
-            location = String.format(
-                "%f,%f",
-                currentLat, currentLng
-            )
-        )
-        if (nextPage != "")
+ var apiCall = service.getPlace(
+    key = String(getValue()),
+    location = String.format(
+        "%f,%f",
+        currentLat, currentLng
+    )
+)
+if (nextPage != "")
+{
+    apiCall = service.getNextPlace(
+        key = String(getValue()),
+        nextPage = nextPage
+    )
+}
+
+withContext(Dispatchers.IO)
+{
+    // let's wait a half second to see if that helps with the null next pages
+    Thread.sleep(1500)
+    var newNextPage = nextPage
+    val response = apiCall.execute()
+    if (response.isSuccessful) {
+        val thisResponse = response.body()
+
+        if(thisResponse!!.next_page_token != null)
         {
-            apiCall = service.getNextPlace(
-                key = String(getValue()),
-                nextPage = nextPage
+            newNextPage = thisResponse!!.next_page_token
+            Log.i("nextpage", newNextPage ?: "NULL")
+            resultList.addAll(
+                LocalChoice.convertResults(
+                    context,
+                    thisResponse!!.results,
+                    currentLng,
+                    currentLat
+                )
             )
         }
-
-        withContext(Dispatchers.IO)
+        if(resultList.size < maxNumber && thisResponse!!.next_page_token != null)
         {
-            // let's wait a half second to see if that helps with the null next pages
-            Thread.sleep(1500)
-            var newNextPage = nextPage
-            val response = apiCall.execute()
-            if (response.isSuccessful) {
-                val thisResponse = response.body()
-
-                if(thisResponse!!.next_page_token != null)
-                {
-                    newNextPage = thisResponse!!.next_page_token
-                    Log.i("nextpage", newNextPage ?: "NULL")
-                    resultList.addAll(
-                        LocalChoice.convertResults(
-                            context,
-                            thisResponse!!.results,
-                            currentLng,
-                            currentLat
-                        )
-                    )
-                }
-                if(resultList.size < maxNumber && thisResponse!!.next_page_token != null)
-                {
-                    fetchPlaces(context,
-                        service,
-                        resultList,
-                        currentLat,
-                        currentLng,
-                        maxNumber,
-                        newNextPage ?: "")
-                }
-            }
+            fetchPlaces(context,
+                service,
+                resultList,
+                currentLat,
+                currentLng,
+                maxNumber,
+                newNextPage ?: "")
         }
     }
 }
-    private interface PlacesEndpoints
-    {
-        @GET("/maps/api/place/nearbysearch/json")
-        fun getPlace(
-            @Query("key") key: String,
-            @Query("location") location: String,
-            @Query("type") type : String = "restaurant",
-            @Query("rankby") rankBy: String = "distance",
-            @Query("keyword") keyword: String = "",
-            @Query("pagetoken") nextPage: String = ""
-        ) : Call<PlacesResponse>
-
-        @GET("/maps/api/place/nearbysearch/json")
-        fun getNextPlace(
-            @Query("key") key: String,
-            @Query("pagetoken") nextPage: String = ""
-        ) : Call<PlacesResponse>
-
-    }
 }
-         */
+}
+private interface PlacesEndpoints
+{
+@GET("/maps/api/place/nearbysearch/json")
+fun getPlace(
+    @Query("key") key: String,
+    @Query("location") location: String,
+    @Query("type") type : String = "restaurant",
+    @Query("rankby") rankBy: String = "distance",
+    @Query("keyword") keyword: String = "",
+    @Query("pagetoken") nextPage: String = ""
+) : Call<PlacesResponse>
+
+@GET("/maps/api/place/nearbysearch/json")
+fun getNextPlace(
+    @Query("key") key: String,
+    @Query("pagetoken") nextPage: String = ""
+) : Call<PlacesResponse>
+
+}
+}
+ */
