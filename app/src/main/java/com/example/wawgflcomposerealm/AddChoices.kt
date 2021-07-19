@@ -91,7 +91,7 @@ fun AddChoices(nav: NavController)
                         String.format(
                             "https://maps.googleapis.com/maps/api/place/photo?maxwidth=50&key=%s&photoreference=%s",
                             String(value),
-                            item.photoReference)),
+                            item.photoMetadata)),
                         contentDescription = null,
                         modifier = Modifier.size(50.dp))
                     Column() {

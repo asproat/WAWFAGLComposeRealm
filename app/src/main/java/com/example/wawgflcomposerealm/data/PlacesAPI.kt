@@ -6,7 +6,6 @@ import android.location.LocationManager
 import android.util.Base64
 import android.util.Log
 import com.example.wawgflcomposerealm.model.LocalChoice
-import com.example.wawgflcomposerealm.model.PlacesResponse
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import retrofit2.Call
