@@ -1,5 +1,6 @@
 package com.example.wawgflcomposerealm
 
+import android.app.Application
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -34,6 +35,7 @@ fun HistoryList(navController: NavController, choiceId: String? = null) {
     var historyTitle = "All Visits"
     val dateFormat = SimpleDateFormat("yyyy-MM-dd hh:mma")
     val choiceData = ChoicesDao()
+    val context = LocalContext.current as MainActivity
     if(choiceId == null)
     {
         historyItems.addAll(choiceData.realm.where<History>().sort("visitDate", Sort.DESCENDING).findAll())
@@ -42,7 +44,7 @@ fun HistoryList(navController: NavController, choiceId: String? = null) {
     {
         historyItems.addAll(choiceData.getHistory(choiceId))
         historyTitle = String.format("%s History",
-            choiceData.getById(choiceId)?.choiceName ?: "Unknown")
+            context.placeNames[choiceId] ?: "Unknown")
     }
     BackHandler(onBack = {
         navController.popBackStack()
@@ -75,7 +77,7 @@ fun HistoryList(navController: NavController, choiceId: String? = null) {
                         val choiceData = ChoicesDao()
                         choiceName = String.format(
                             " - %s",
-                            choiceData.getById(item.placeId )?.choiceName ?: "Unknown"
+                            context.placeNames[item.placeId] ?: "Unknown"
                         )
                     }
                     Text(

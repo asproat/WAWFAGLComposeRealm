@@ -1,4 +1,5 @@
 package com.example.wawgflcomposerealm.data
+import android.content.Context
 import com.example.wawgflcomposerealm.model.Choices
 import com.example.wawgflcomposerealm.model.History
 import io.realm.Realm
@@ -33,10 +34,16 @@ class ChoicesDao {
         }
     }
 
-    fun getAll() : List<Choices>
+    fun getChoiceCount() : Int
+    {
+        realm.refresh()
+        return realm.where<Choices>().findAll().count()
+    }
+
+    fun getAll(context: Context) : List<Choices>
     {
         realm.refresh() // make sure deleted items are gone
-        return realm.where<Choices>().findAll()
+        return realm.where<Choices>().findAll().toList()
     }
 
     fun getById(id: String) : Choices?
@@ -56,15 +63,18 @@ class ChoicesDao {
         }
     }
 
-    fun addVisit(choice: Choices, date: Date = Date())
+    fun addVisit(choiceId: String, date: Date = Date())
     {
         realm.executeTransaction {
-            choice.lastSelected = date
-            val history = History()
-            history.historyId = UUID.randomUUID()
-            history.placeId = choice.placeId
-            history.visitDate = date
-            realm.insert(history)
+            val choice = realm.where<Choices>().equalTo("placeId", choiceId).findFirst()
+            if(choice != null) {
+                choice.lastSelected = date
+                val history = History()
+                history.historyId = UUID.randomUUID()
+                history.placeId = choice.placeId
+                history.visitDate = date
+                realm.insert(history)
+            }
         }
     }
 

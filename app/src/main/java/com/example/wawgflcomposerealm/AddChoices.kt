@@ -76,9 +76,9 @@ fun AddChoices(nav: NavController)
                         val choiceData = ChoicesDao()
                         choiceData.create(
                             item.placeId,
-                            item.choiceName,
-                            item.choiceAddress,
-                            true
+                            name = "",
+                            address = "",
+                            transaction = true
                         )
                         list.remove(item)
                         showWait.value = false

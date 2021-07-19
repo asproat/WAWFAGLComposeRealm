@@ -5,8 +5,7 @@ import android.content.Context
 import android.location.LocationManager
 import android.util.Base64
 import android.util.Log
-import com.example.wawgflcomposerealm.model.LocalChoice
-import com.example.wawgflcomposerealm.model.PlacesResponse
+import com.example.wawgflcomposerealm.model.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import retrofit2.Call
@@ -26,6 +25,45 @@ class PlacesAPI {
         fun getValue() : ByteArray {
             return Base64.decode(getPartial(), 0)
         }
+
+        fun getPlaceDetails(
+            context: Context,
+            choice: ViewChoices
+            ) {
+
+            val client = OkHttpClient.Builder().build()
+            val retrofit = Retrofit.Builder()
+                .baseUrl("https://maps.googleapis.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(client)
+                .build()
+            val service: PlacesEndpoints = retrofit.create(PlacesEndpoints::class.java)
+            var apiCall = service.getPlaceDetails(
+                key = String(getValue()),
+                placeId = choice.placeId
+            )
+
+            runBlocking {
+                val job: Job = launch {
+
+                    withContext(Dispatchers.IO)
+                    {
+                        // let's wait a half second to see if that helps with the null next pages
+                        val response = apiCall.execute()
+                        if (response.isSuccessful) {
+                            val thisResponse = response.body()
+                            if (thisResponse?.status == "OK") {
+                                choice.choiceName = thisResponse?.result?.name ?: ""
+                                choice.choiceAddress = thisResponse?.result?.formatted_address ?: ""
+                            }
+                        }
+                    }
+                }
+                job.join()
+            }
+        }
+
+
 
         @SuppressLint("MissingPermission")
         fun getPlaces(
@@ -57,7 +95,7 @@ class PlacesAPI {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
 
-                    val maxAllowed = 60 - ChoicesDao().getAll().size
+                    val maxAllowed = 60 - ChoicesDao().getChoiceCount()
                     // Google won't return more than 60 for free
                     runBlocking {
                         val job: Job = launch {
@@ -157,5 +195,11 @@ class PlacesAPI {
             @Query("pagetoken") nextPage: String = ""
         ) : Call<PlacesResponse>
 
+        @GET("/maps/api/place/details/json")
+        fun getPlaceDetails(
+            @Query("key") key: String,
+            @Query("place_id") placeId: String,
+            @Query("fields") fields: String = "name,formatted_address"
+        ) : Call<PlaceResponse>
     }
 }

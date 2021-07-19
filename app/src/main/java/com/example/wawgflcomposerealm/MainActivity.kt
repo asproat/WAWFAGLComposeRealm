@@ -31,7 +31,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navArgument
 import androidx.navigation.compose.rememberNavController
 import com.example.wawgflcomposerealm.data.ChoicesDao
+import com.example.wawgflcomposerealm.data.PlacesAPI
 import com.example.wawgflcomposerealm.model.Choices
+import com.example.wawgflcomposerealm.model.ViewChoices
 import io.realm.Realm
 import kotlinx.coroutines.launch
 import java.util.*
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
     var currentChoiceId = ""
     var firstTime = true
     var rand = Random(Date().time)
+    val placeNames = hashMapOf<String,String>()
 
     @ExperimentalUnitApi
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,7 +116,7 @@ fun TextAndButton(nav: NavController) {
     context.firstTime = false
     var rand = (LocalContext.current as MainActivity).rand
     val state = rememberLazyListState()
-    val list : SnapshotStateList<Choices> = remember{mutableStateListOf<Choices>()}
+    val list : SnapshotStateList<ViewChoices> = remember{mutableStateListOf<ViewChoices>()}
     val name by remember {
         derivedStateOf {
             try {
@@ -129,16 +132,23 @@ fun TextAndButton(nav: NavController) {
     fun refreshList() {
         list.clear()
 
-        list.add(Choices()) // blank for top line
-        list.add(Choices()) // blank for top line
-        list.addAll(choiceData.getAll())
+        list.add(ViewChoices()) // blank for top line
+        list.add(ViewChoices()) // blank for top line
+
+        for(dataChoice in choiceData.getAll(context))
+        {
+            val listChoice = ViewChoices(placeId=dataChoice.placeId)
+            PlacesAPI.getPlaceDetails(context, listChoice)
+            list.add(listChoice)
+            context.placeNames[listChoice.placeId] = listChoice.choiceName
+        }
         val listCount = list.size
 
         for (i in 1..(50 / listCount)) {
             for (j in 2.until(2 + listCount - 2)) {
                 val choice = list[j]
                 list.add(
-                    Choices(
+                    ViewChoices(
                         choice.placeId,
                         choice.choiceName,
                         choice.choiceAddress
@@ -146,13 +156,13 @@ fun TextAndButton(nav: NavController) {
                 )
             }
         }
-        list.add(Choices()) // blank for bottom line
-        list.add(Choices()) // blank for bottom line
+        list.add(ViewChoices()) // blank for bottom line
+        list.add(ViewChoices()) // blank for bottom line
     }
 
     val coroutineScope = rememberCoroutineScope()
 
-    suspend fun pickAPlace(list: MutableList<Choices>, state: LazyListState, rand: Random) {
+    suspend fun pickAPlace(list: MutableList<ViewChoices>, state: LazyListState, rand: Random) {
         if(list.size > 4) {
             showWait.value = true
             for (i in 1..4) {
@@ -165,7 +175,7 @@ fun TextAndButton(nav: NavController) {
 
     LaunchedEffect(key1 = "one", block = {
         refreshList()
-        if (choiceData.getAll().size < 5) {
+        if (choiceData.getChoiceCount() < 5) {
             nav.navigate("addChoices")
         }
         pickAPlace(list,state, rand)
@@ -212,10 +222,7 @@ fun TextAndButton(nav: NavController) {
                 coroutineScope.launch {
                     val selectedChoice = list[state.firstVisibleItemIndex + 2]
                     context.currentChoiceId = selectedChoice.placeId
-                    val updateChoice = choiceData.getById(selectedChoice.placeId)
-                    if (updateChoice != null) {
-                        choiceData.addVisit(updateChoice)
-                    }
+                        choiceData.addVisit(selectedChoice.placeId)
                 }
             },
             modifier = Modifier
@@ -340,13 +347,13 @@ fun Greeting(name: String) {
 fun MyPreview()
 {
 
-    val list: MutableList<Choices> = mutableListOf(
-        Choices("123", "One", "A"),
-        Choices("231", "Two", "B"),
-        Choices("312", "Three", "C"),
-        Choices("213", "Four", "D"),
-        Choices("132", "Five", "E"),
-        Choices("321", "Six", "F"),
+    val list: MutableList<ViewChoices> = mutableListOf(
+        ViewChoices("123", "One", "A"),
+        ViewChoices("231", "Two", "B"),
+        ViewChoices("312", "Three", "C"),
+        ViewChoices("213", "Four", "D"),
+        ViewChoices("132", "Five", "E"),
+        ViewChoices("321", "Six", "F"),
     )
 
     val nav = rememberNavController()
