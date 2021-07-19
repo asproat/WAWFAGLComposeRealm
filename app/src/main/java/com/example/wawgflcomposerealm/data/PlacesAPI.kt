@@ -1,10 +1,13 @@
 package com.example.wawgflcomposerealm.data
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.util.Base64
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.wawgflcomposerealm.model.LocalChoice
 import kotlinx.coroutines.*
 import com.google.android.libraries.places.api.Places
@@ -25,7 +28,6 @@ class PlacesAPI {
             return Base64.decode(getPartial(), 0)
         }
 
-        @SuppressLint("MissingPermission")
         fun getPlaces(
             context: Context,
             maxNumber: Int = 50,
@@ -55,7 +57,9 @@ class PlacesAPI {
                         location = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
                     }
                 }
-                if (location != null) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED &&
+                    location != null) {
                     val currentLng = location!!.longitude
                     val currentLat = location!!.latitude
 
@@ -86,6 +90,10 @@ class PlacesAPI {
 
                                     semaphore.release()
                                     Log.i("place", "Got 'em")
+                                }
+                                else
+                                {
+                                    semaphore.release()
                                 }
                             }
                         }
