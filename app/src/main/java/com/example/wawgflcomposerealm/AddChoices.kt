@@ -1,12 +1,14 @@
 package com.example.wawgflcomposerealm
 
-import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.CircularProgressIndicator
@@ -15,21 +17,20 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.rememberImagePainter
 import com.example.wawgflcomposerealm.data.ChoicesDao
 import com.example.wawgflcomposerealm.data.PlacesAPI
+import com.example.wawgflcomposerealm.model.Choices
 import com.example.wawgflcomposerealm.model.LocalChoice
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.net.FetchPhotoRequest
-import coil.compose.rememberImagePainter
-import android.util.Base64
 
 @Composable
 fun AddChoices(nav: NavController)
@@ -38,9 +39,10 @@ fun AddChoices(nav: NavController)
     val state = rememberLazyListState()
     val list : SnapshotStateList<LocalChoice> = remember{mutableStateListOf<LocalChoice>()}
     val myActivity = LocalContext.current as MainActivity
-    val showWait: MutableState<Boolean> = remember { mutableStateOf(true) }
-    Places.initialize(context, String(PlacesAPI.getValue()))
+    var showWait: MutableState<Boolean> = remember { mutableStateOf(true) }
+
     val partial = "QUl6YVN5QUx5allFUjhtOTNIMVBmTjFPTmdlQ1JINU9tTzkzbkxR"
+
     val value = Base64.decode(partial, 0)
 
     suspend fun loadChoices()
@@ -85,25 +87,13 @@ fun AddChoices(nav: NavController)
                     }
                    )
                 {
-
-                    if(item.photoMetadata != null) {
-
-                        Image(painter = rememberImagePainter(
-                            String.format(
-                                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=50&key=%s&photoreference=%s",
-                                String(value),
-                                item.photoMetadata.toString())),
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp))
-                    }
-                    else
-                    {
-                        Image(painterResource(id = R.drawable.photo_placeholder),
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp))
-                    }
-
-
+                    Image(painter = rememberImagePainter(
+                        String.format(
+                            "https://maps.googleapis.com/maps/api/place/photo?maxwidth=50&key=%s&photoreference=%s",
+                            String(value),
+                            item.photoReference)),
+                        contentDescription = null,
+                        modifier = Modifier.size(50.dp))
                     Column() {
                         Text(
                             item.choiceName,
