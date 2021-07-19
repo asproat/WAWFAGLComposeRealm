@@ -16,7 +16,7 @@ public class LocalChoice {
     companion object
     {
         fun convertResults(context: Context,
-                           results: List<Place>,
+                           results: List<Results>,
                            lng: Double, lat: Double) : List<LocalChoice>
         {
             val resultList = mutableListOf<LocalChoice>()
@@ -29,10 +29,10 @@ public class LocalChoice {
             for (result in results) {
 
                 // if it's not already in the list
-                if(choiceData.getById(result.id ?: "") == null) {
+                if(choiceData.getById(result.place_id ?: "") == null) {
                     val choiceLocation = Location("choice")
-                    choiceLocation.latitude = result.latLng?.latitude ?: 0.0
-                    choiceLocation.longitude = result.latLng?.longitude ?: 0.0
+                    choiceLocation.latitude = result.geometry.location.lat ?: 0.0
+                    choiceLocation.longitude = result.geometry.location.lng ?: 0.0
 
                     val distance = currentLocation.distanceTo(choiceLocation)
                     if (distance <=
@@ -42,11 +42,11 @@ public class LocalChoice {
                     ) {
                         var localChoice = LocalChoice()
                         localChoice.choiceName = result.name ?: ""
-                        localChoice.choiceAddress = result.address ?: ""
+                        localChoice.choiceAddress = result.vicinity ?: ""
                         localChoice.choiceDistance = distance
-                        localChoice.placeId = result.id!!
-                        if (result.photoMetadatas != null && result.photoMetadatas!!.size > 0) {
-                            localChoice.photoMetadata = result.photoMetadatas!![0].zza()
+                        localChoice.placeId = result.place_id!!
+                        if (result.photos != null && result.photos!!.size > 0) {
+                            localChoice.photoMetadata = result.photos!![0].photo_reference
                         }
 
                         resultList.add(localChoice)
